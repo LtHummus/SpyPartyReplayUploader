@@ -1,7 +1,9 @@
 package controllers
 
 import javax.inject._
+import models._
 import play.api._
+import play.api.libs.json.Json
 import play.api.mvc._
 
 /**
@@ -20,5 +22,15 @@ class HomeController @Inject()(cc: ControllerComponents) extends AbstractControl
    */
   def index() = Action { implicit request: Request[AnyContent] =>
     Ok(views.html.index())
+  }
+
+  def sampleForm() = Action { implicit request =>
+    val f = TournamentSubmissionForm(Seq(
+      TournamentSubmissionFormItem("week", "Week", NumberMetadata(0, 10)),
+      TournamentSubmissionFormItem("day", "day", NumberMetadata(1, 7))
+    ))
+
+    Ok(Json.toJson(f))
+
   }
 }

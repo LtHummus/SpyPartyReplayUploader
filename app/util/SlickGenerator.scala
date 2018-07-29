@@ -10,12 +10,6 @@ import slick.model.Model
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext}
 
-/*
-slick.dbs.default.profile = "slick.jdbc.MySQLProfile$"
-slick.dbs.default.db.url = "jdbc:mysql://localhost/uploader?useSSL=false&nullCatalogMeansCurrent=true"
-slick.dbs.default.db.user = "root"
-slick.dbs.default.db.password = "root"
- */
 
 object SlickGenerator extends App {
 
