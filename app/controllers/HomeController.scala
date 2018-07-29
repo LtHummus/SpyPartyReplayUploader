@@ -36,8 +36,18 @@ class HomeController @Inject()(cc: ControllerComponents) extends AbstractControl
         ))
       )
     ))
-
     Ok(Json.toJson(f))
 
+  }
+
+  def parseForm() = Action(parse.json) { request =>
+    val potentialForm = request.body.validate[TournamentSubmissionForm]
+    potentialForm.fold(
+      errors => ???,
+      form => {
+        println(form)
+        Ok("ok")
+      }
+    )
   }
 }

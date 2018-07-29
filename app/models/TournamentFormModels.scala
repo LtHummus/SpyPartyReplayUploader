@@ -87,10 +87,15 @@ object TournamentSubmissionFormItem {
     }
   }
 
-  private val reads: Reads[TournamentSubmissionFormItem] = (
-    (JsPath \ "internalName").read[String] and
-    (JsPath \ "displayName").read[String]
-  )((i, d) => TournamentSubmissionFormItem(i, d, StringMetadata(4)))
+  private val reads: Reads[TournamentSubmissionFormItem] = new Reads[TournamentSubmissionFormItem] {
+    override def reads(json: JsValue): JsResult[TournamentSubmissionFormItem] = {
+      val internalName = (json \ "internalName").as[String]
+      val displayName = (json \ "displayName").as[String]
+      val metadata = (json \ "metadata").as[TournamentFormKindMetadata]
+
+      JsSuccess(TournamentSubmissionFormItem(internalName, displayName, metadata))
+    }
+  }
 
   implicit val format: Format[TournamentSubmissionFormItem] = Format(reads, writes)
 }
