@@ -56,18 +56,19 @@ trait Tables {
   /** Entity class storing rows of table Tournaments
    *  @param id Database column id SqlType(INT), AutoInc, PrimaryKey
    *  @param name Database column name SqlType(TEXT)
-   *  @param active Database column active SqlType(BIT), Default(true) */
-  case class TournamentsRow(id: Int, name: String, active: Boolean = true)
+   *  @param active Database column active SqlType(BIT), Default(true)
+   *  @param formItems Database column form_items SqlType(JSON), Length(1073741824,true) */
+  case class TournamentsRow(id: Int, name: String, active: Boolean = true, formItems: String)
   /** GetResult implicit for fetching TournamentsRow objects using plain SQL queries */
   implicit def GetResultTournamentsRow(implicit e0: GR[Int], e1: GR[String], e2: GR[Boolean]): GR[TournamentsRow] = GR{
     prs => import prs._
-    TournamentsRow.tupled((<<[Int], <<[String], <<[Boolean]))
+    TournamentsRow.tupled((<<[Int], <<[String], <<[Boolean], <<[String]))
   }
   /** Table description of table tournaments. Objects of this class serve as prototypes for rows in queries. */
   class Tournaments(_tableTag: Tag) extends profile.api.Table[TournamentsRow](_tableTag, Some("uploader"), "tournaments") {
-    def * = (id, name, active) <> (TournamentsRow.tupled, TournamentsRow.unapply)
+    def * = (id, name, active, formItems) <> (TournamentsRow.tupled, TournamentsRow.unapply)
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? = (Rep.Some(id), Rep.Some(name), Rep.Some(active)).shaped.<>({r=>import r._; _1.map(_=> TournamentsRow.tupled((_1.get, _2.get, _3.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+    def ? = (Rep.Some(id), Rep.Some(name), Rep.Some(active), Rep.Some(formItems)).shaped.<>({r=>import r._; _1.map(_=> TournamentsRow.tupled((_1.get, _2.get, _3.get, _4.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column id SqlType(INT), AutoInc, PrimaryKey */
     val id: Rep[Int] = column[Int]("id", O.AutoInc, O.PrimaryKey)
@@ -75,6 +76,8 @@ trait Tables {
     val name: Rep[String] = column[String]("name")
     /** Database column active SqlType(BIT), Default(true) */
     val active: Rep[Boolean] = column[Boolean]("active", O.Default(true))
+    /** Database column form_items SqlType(JSON), Length(1073741824,true) */
+    val formItems: Rep[String] = column[String]("form_items", O.Length(1073741824,varying=true))
   }
   /** Collection-like TableQuery object for table Tournaments */
   lazy val Tournaments = new TableQuery(tag => new Tournaments(tag))
