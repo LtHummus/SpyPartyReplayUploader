@@ -4,11 +4,12 @@ import database.BoutDao
 import javax.inject.{Inject, Singleton}
 import play.api.libs.json.Json
 import play.api.mvc.{AbstractController, ControllerComponents}
+import services._
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class BoutController @Inject() (boutDao: BoutDao, cc: ControllerComponents)(implicit ec: ExecutionContext) extends AbstractController(cc) {
+class BoutController @Inject() (boutPersister: BoutPersister, boutDao: BoutDao, cc: ControllerComponents)(implicit ec: ExecutionContext) extends AbstractController(cc) {
 
   def getById(x: Int) = Action.async {
     boutDao.getById(x).map {
@@ -21,5 +22,30 @@ class BoutController @Inject() (boutDao: BoutDao, cc: ControllerComponents)(impl
     boutDao.getByTournamentId(x).map { res =>
       Ok(Json.toJson(res))
     }
+  }
+
+  def upload = Action.async(parse.multipartFormData) { implicit request =>
+
+    boutPersister.persist(request.body.asFormUrlEncoded, null).map {
+      case Successful => Ok("persisted")
+      case InvalidMetadata => BadRequest("invalid tournament metdata")
+      case InvalidZipFile => BadRequest("invalid zip file uploaded")
+      case BadTournamentId => BadRequest("Unknown tournament Id")
+    }
+
+
+//    request.body.file("file") match {
+//      case None => Future.successful(BadRequest("No file specified"))
+//      case Some(realFile) =>
+//        val data = request.body.asFormUrlEncoded
+//
+//        boutPersister.persist(data, realFile.ref.path).map {
+//          case Successful => Ok("persisted")
+//          case InvalidMetadata => BadRequest("invalid tournament metdata")
+//          case InvalidZipFile => BadRequest("invalid zip file uploaded")
+//          case BadTournamentId => BadRequest("Unknown tournament Id")
+//        }
+//    }
+
   }
 }
