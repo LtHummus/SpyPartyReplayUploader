@@ -27,7 +27,14 @@ class HomeController @Inject()(cc: ControllerComponents) extends AbstractControl
   def sampleForm() = Action { implicit request =>
     val f = TournamentSubmissionForm(Seq(
       TournamentSubmissionFormItem("week", "Week", NumberMetadata(0, 10)),
-      TournamentSubmissionFormItem("day", "day", NumberMetadata(1, 7))
+      TournamentSubmissionFormItem("day", "day", NumberMetadata(1, 7)),
+      TournamentSubmissionFormItem("start", "Starter", StringMetadata(400)),
+      TournamentSubmissionFormItem("division", "Division", SelectionMetadata(
+        Seq(
+          SelectionEntry("challenger", "Challenger"),
+          SelectionEntry("diamond", "Diamond")
+        ))
+      )
     ))
 
     Ok(Json.toJson(f))

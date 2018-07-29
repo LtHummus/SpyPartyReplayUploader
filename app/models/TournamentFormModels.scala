@@ -14,33 +14,78 @@ object SelectionEntry {
 sealed trait TournamentFormKindMetadata {
   val kind: String
 }
+object TournamentFormKindMetadata {
+  private val writes: Writes[TournamentFormKindMetadata] = new Writes[TournamentFormKindMetadata] {
+    override def writes(o: TournamentFormKindMetadata): JsValue = {
+      o match {
+        case x: StringMetadata =>
+          JsObject(
+            Seq(
+              "kind" -> JsString(x.kind),
+              "maxLength" -> JsNumber(x.maxLength)
+            )
+          )
+        case x: NumberMetadata =>
+          JsObject(
+            Seq(
+              "kind" -> JsString(x.kind),
+              "min" -> JsNumber(x.min),
+              "max" -> JsNumber(x.max)
+            )
+          )
+        case x: SelectionMetadata =>
+          JsObject(
+            Seq(
+              "kind" -> JsString(x.kind),
+              "items" -> Json.toJson(x.entries)
+            )
+          )
+      }
+    }
+  }
+  private val reads: Reads[TournamentFormKindMetadata] = new Reads[TournamentFormKindMetadata] {
+    override def reads(json: JsValue): JsResult[TournamentFormKindMetadata] = {
+      (json \ "kind").get match {
+        case JsString("String") =>
+          JsSuccess(StringMetadata((json \ "maxLength").as[Int]))
+        case JsString("Number") =>
+          val min = (json \ "min").as[Int]
+          val max = (json \ "max").as[Int]
+          JsSuccess(NumberMetadata(min, max))
+        case JsString("Selection") =>
+          val items = (json \ "items").as[Seq[SelectionEntry]]
+          JsSuccess(SelectionMetadata(items))
+        case _ =>
+          JsError("Unknown metadata type in JSON Structure")
+      }
+    }
+  }
+
+  implicit val format = Format(reads, writes)
+}
 case class StringMetadata(maxLength: Int) extends TournamentFormKindMetadata {
   override val kind: String = "String"
 }
-object StringMetadata {
-  implicit def format = Json.format[StringMetadata]
-}
-
 case class NumberMetadata(min: Int, max: Int) extends TournamentFormKindMetadata {
   override val kind: String = "Number"
 }
-object NumberMetadata {
-  implicit def format = Json.format[NumberMetadata]
-}
-
-case class SelectionMetadata(items: Seq[SelectionEntry]) extends TournamentFormKindMetadata {
+case class SelectionMetadata(entries: Seq[SelectionEntry]) extends TournamentFormKindMetadata {
   override val kind: String = "Selection"
-}
-object SelectionMetadata {
-  implicit def format = Json.format[SelectionMetadata]
 }
 
 case class TournamentSubmissionFormItem(internalName: String, displayName: String, metadata: TournamentFormKindMetadata)
 object TournamentSubmissionFormItem {
-  private val writes: Writes[TournamentSubmissionFormItem] = (
-    (JsPath \ "internalName").write[String] and
-    (JsPath \ "displayName").write[String]
-  )(x => (x.internalName, x.displayName))
+  private val writes: Writes[TournamentSubmissionFormItem] = new Writes[TournamentSubmissionFormItem] {
+    override def writes(o: TournamentSubmissionFormItem): JsValue = {
+      JsObject(
+        Seq(
+          "displayName" -> JsString(o.displayName),
+          "internalName" -> JsString(o.internalName),
+          "metadata" -> Json.toJson(o.metadata)
+        )
+      )
+    }
+  }
 
   private val reads: Reads[TournamentSubmissionFormItem] = (
     (JsPath \ "internalName").read[String] and
