@@ -1,11 +1,10 @@
 package database
 
 import javax.inject.{Inject, Singleton}
-import models.{Tournament, TournamentSubmissionForm, TournamentSubmissionFormItem}
+import models.{Tournament, TournamentSubmissionForm}
 import play.api.db.slick.DatabaseConfigProvider
-import play.api.libs.json.{JsString, Json}
+import play.api.libs.json.Json
 import slick.jdbc.JdbcProfile
-import slick.jdbc.MySQLProfile.api._
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -16,6 +15,8 @@ class TournamentDao @Inject() (dbConfigProvider: DatabaseConfigProvider)(implici
   }
 
   val dbConfig = dbConfigProvider.get[JdbcProfile]
+
+  import dbConfig.profile.api._
 
   def getAll: Future[Seq[Tournament]] = {
     dbConfig.db.run {
