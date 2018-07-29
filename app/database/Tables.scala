@@ -24,8 +24,8 @@ trait Tables {
    *  @param player1 Database column player1 SqlType(TINYTEXT), Length(255,true)
    *  @param player2 Database column player2 SqlType(TINYTEXT), Length(255,true)
    *  @param url Database column url SqlType(TEXT)
-   *  @param notes Database column notes SqlType(TEXT) */
-  case class BoutsRow(id: Int, tournament: Int, player1: String, player2: String, url: String, notes: String)
+   *  @param metadata Database column metadata SqlType(JSON), Length(1073741824,true) */
+  case class BoutsRow(id: Int, tournament: Int, player1: String, player2: String, url: String, metadata: String)
   /** GetResult implicit for fetching BoutsRow objects using plain SQL queries */
   implicit def GetResultBoutsRow(implicit e0: GR[Int], e1: GR[String]): GR[BoutsRow] = GR{
     prs => import prs._
@@ -33,9 +33,9 @@ trait Tables {
   }
   /** Table description of table bouts. Objects of this class serve as prototypes for rows in queries. */
   class Bouts(_tableTag: Tag) extends profile.api.Table[BoutsRow](_tableTag, Some("uploader"), "bouts") {
-    def * = (id, tournament, player1, player2, url, notes) <> (BoutsRow.tupled, BoutsRow.unapply)
+    def * = (id, tournament, player1, player2, url, metadata) <> (BoutsRow.tupled, BoutsRow.unapply)
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? = (Rep.Some(id), Rep.Some(tournament), Rep.Some(player1), Rep.Some(player2), Rep.Some(url), Rep.Some(notes)).shaped.<>({r=>import r._; _1.map(_=> BoutsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+    def ? = (Rep.Some(id), Rep.Some(tournament), Rep.Some(player1), Rep.Some(player2), Rep.Some(url), Rep.Some(metadata)).shaped.<>({r=>import r._; _1.map(_=> BoutsRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
 
     /** Database column id SqlType(INT), AutoInc, PrimaryKey */
     val id: Rep[Int] = column[Int]("id", O.AutoInc, O.PrimaryKey)
@@ -47,8 +47,11 @@ trait Tables {
     val player2: Rep[String] = column[String]("player2", O.Length(255,varying=true))
     /** Database column url SqlType(TEXT) */
     val url: Rep[String] = column[String]("url")
-    /** Database column notes SqlType(TEXT) */
-    val notes: Rep[String] = column[String]("notes")
+    /** Database column metadata SqlType(JSON), Length(1073741824,true) */
+    val metadata: Rep[String] = column[String]("metadata", O.Length(1073741824,varying=true))
+
+    /** Foreign key referencing Tournaments (database name fk_tournament) */
+    lazy val tournamentsFk = foreignKey("fk_tournament", tournament, Tournaments)(r => r.id, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
   }
   /** Collection-like TableQuery object for table Bouts */
   lazy val Bouts = new TableQuery(tag => new Bouts(tag))
