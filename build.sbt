@@ -26,6 +26,10 @@ libraryDependencies ++= Seq(
 
 
   //logging
-  "org.slf4j" % "slf4j-simple" % "1.6.4"
+  "org.slf4j" % "slf4j-simple" % "1.6.4",
+
+  //cache
+  "com.github.cb372" %% "scalacache-core" % "0.24.2",
+  "com.github.cb372" %% "scalacache-caffeine" % "0.24.2"
 )
 
