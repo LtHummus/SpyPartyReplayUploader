@@ -36,18 +36,5 @@ class BoutController @Inject() (boutPersister: BoutPersister, boutDao: BoutDao, 
         }
     }
 
-//    request.body.file("file") match {
-//      case None => Future.successful(BadRequest("No file specified"))
-//      case Some(realFile) =>
-//        val data = request.body.asFormUrlEncoded
-//
-//        boutPersister.persist(data, realFile.ref.path).map {
-//          case Successful => Ok("persisted")
-//          case InvalidMetadata => BadRequest("invalid tournament metdata")
-//          case InvalidZipFile => BadRequest("invalid zip file uploaded")
-//          case BadTournamentId => BadRequest("Unknown tournament Id")
-//        }
-//    }
-
   }
 }

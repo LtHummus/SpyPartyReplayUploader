@@ -15,8 +15,10 @@ case object String extends TournamentFormKind("String")
 case object Number extends TournamentFormKind("Number")
 case object Selection extends TournamentFormKind("Selection")
 
-sealed trait TournamentFormKindMetadata {
+sealed abstract class TournamentFormKindMetadata {
   val kind: TournamentFormKind
+
+  def validate(input: String): Boolean
 }
 object TournamentFormKindMetadata {
   private val writes: Writes[TournamentFormKindMetadata] = {
@@ -63,12 +65,24 @@ object TournamentFormKindMetadata {
 }
 case class StringMetadata(maxLength: Int) extends TournamentFormKindMetadata {
   override val kind = String
+
+  override def validate(input: String): Boolean = input.length <= maxLength
 }
 case class NumberMetadata(min: Int, max: Int) extends TournamentFormKindMetadata {
   override val kind = Number
+
+  override def validate(input: String): Boolean = {
+    val num = input.toInt
+    //TODO: fail this if we're not a number
+    min <= num && num <= max
+  }
 }
 case class SelectionMetadata(entries: Seq[SelectionEntry]) extends TournamentFormKindMetadata {
   override val kind = Selection
+
+  private val possibleEntryValues = entries.map(_.internalName).toSet
+
+  override def validate(input: String): Boolean = possibleEntryValues.contains(input)
 }
 
 case class TournamentSubmissionFormItem(internalName: String, displayName: String, metadata: TournamentFormKindMetadata)

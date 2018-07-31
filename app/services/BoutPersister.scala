@@ -14,6 +14,7 @@ import scala.util.{Failure, Success}
 sealed trait PersistResult
 case object BadTournamentId extends PersistResult
 case object MissingMetadata extends PersistResult
+@Deprecated case object BadMetadata extends PersistResult //TODO: this shouldn't be used in favor of more detailed messages
 case object InvalidSelection extends PersistResult
 case object InvalidZipFile extends PersistResult
 case object FailedToAddToDatabase extends PersistResult
@@ -25,44 +26,18 @@ case object Successful extends PersistResult
 class BoutPersister @Inject() (uploader: FileUploader, boutDao: BoutDao, tournamentDao: TournamentDao)(implicit ec: ExecutionContext) {
 
   private def getTournament(data: Map[String, String]): Future[PersistResult \/ Tournament] = {
-//    for {
-//      potentialTournamentId <- data.get("tournament")
-//      potentialTournament   <- tournamentDao.getById(potentialTournamentId.toInt)
-//    } yield {
-//      potentialTournament match {
-//        case Some(t) => t.right
-//        case None    => BadTournamentId.left
-//      }
-//    }
-
-    Future.successful(Tournament(1, "test tournament", true, TournamentSubmissionForm(Seq(
-      TournamentSubmissionFormItem("test", "test", NumberMetadata(0, 10))
-    ))).right)
+    data.get("tournament") match {
+      case None               => Future.successful(BadTournamentId.left)
+      case Some(tournamentId) => tournamentDao.getById(tournamentId.toInt).map {
+        case None             => BadTournamentId.left
+        case Some(tournament) => tournament.right
+      }
+    }
   }
 
   private def validateData(tournament: Tournament, data: Map[String, String]): Future[PersistResult \/ BoutMetadata] = {
     Future.successful {
-      val requiredFieldNames = tournament.formItems.items.map(_.internalName).toSet
-      val fieldsWeHave = data.keys.toSet
-
-      val missingFields = requiredFieldNames -- fieldsWeHave
-
-      val selectionFields = tournament.formItems.items.filter(_.metadata.kind == Selection)
-
-      val selectionsOk = selectionFields.forall{ curr =>
-        val ourItem = data.getOrElse(curr.internalName, "")
-        require(curr.metadata.isInstanceOf[SelectionMetadata], "Selection type metadata invalid")
-
-        curr.metadata.asInstanceOf[SelectionMetadata].entries.map(_.internalName).toSet.contains(ourItem)
-      }
-
-      if (missingFields.nonEmpty) {
-        MissingMetadata.left
-      } else if (!selectionsOk) {
-        InvalidSelection.left
-      } else {
-        BoutMetadata(tournament.formItems.items.map(_.internalName).map(it => BoutMetadataItem(it, data(it)))).right
-      }
+      tournament.validate(data).leftMap(_ => BadMetadata)
     }
   }
 
