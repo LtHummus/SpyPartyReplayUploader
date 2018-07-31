@@ -2,7 +2,7 @@ package database
 
 import database.Tables.BoutsRow
 import javax.inject.{Inject, Singleton}
-import models.Bout
+import models.{Bout, BoutMetadata}
 import play.api.db.slick.DatabaseConfigProvider
 import play.api.libs.json.Json
 import slick.jdbc.JdbcProfile
@@ -13,7 +13,7 @@ import scala.concurrent.{ExecutionContext, Future}
 class BoutDao @Inject() (dbConfigProvider: DatabaseConfigProvider)(implicit ec: ExecutionContext) {
 
   private def convertToBout(x: BoutsRow): Bout = {
-    Bout(x.id, x.tournament, x.player1, x.player2, x.url, Json.parse(x.metadata))
+    Bout(x.id, x.tournament, x.player1, x.player2, x.url, Json.parse(x.metadata).as[BoutMetadata])
   }
 
   val dbConfig = dbConfigProvider.get[JdbcProfile]
@@ -33,6 +33,13 @@ class BoutDao @Inject() (dbConfigProvider: DatabaseConfigProvider)(implicit ec: 
       Tables.Bouts.filter(_.tournament === x).result.map { res =>
         res.map(convertToBout)
       }
+    }
+  }
+
+  def insert(bout: Bout): Future[Int] = {
+    val newBout = BoutsRow(0, bout.tournament, "player1", "player2", bout.url, Json.toJson(bout.metadata).toString())
+    dbConfig.db.run {
+      Tables.Bouts += newBout
     }
   }
 }

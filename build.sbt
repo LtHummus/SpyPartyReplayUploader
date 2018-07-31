@@ -7,8 +7,6 @@ lazy val root = (project in file(".")).enablePlugins(PlayScala)
 
 scalaVersion := "2.12.6"
 
-scalacOptions += "-Ypartial-unification"
-
 libraryDependencies += guice
 libraryDependencies += "org.scalatestplus.play" %% "scalatestplus-play" % "3.1.2" % Test
 
@@ -35,8 +33,10 @@ libraryDependencies ++= Seq(
   "com.github.cb372" %% "scalacache-caffeine" % "0.24.2",
 
   //functional programming
-  "org.typelevel" %% "cats-core" % "1.2.0",
-  "org.typelevel" %% "cats-kernel" % "1.2.0",
-  "org.typelevel" %% "cats-macros" % "1.2.0"
+  "org.scalaz" %% "scalaz-core" % "7.2.25",
+
+  //S3
+  "com.amazonaws" % "aws-java-sdk-s3" % "1.11.375"
+
 )
 

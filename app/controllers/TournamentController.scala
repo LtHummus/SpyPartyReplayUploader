@@ -1,6 +1,7 @@
 package controllers
 
 import com.typesafe.config.Config
+import config.SpyPartyReplayUploaderConfig
 import database.TournamentDao
 import javax.inject.{Inject, Singleton}
 import models.TournamentInput
@@ -10,7 +11,7 @@ import play.api.mvc.{AbstractController, ControllerComponents}
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class TournamentController @Inject() (config: Config, tournamentDao: TournamentDao, cc: ControllerComponents)(implicit ec: ExecutionContext) extends AbstractController(cc) {
+class TournamentController @Inject()(config: SpyPartyReplayUploaderConfig, tournamentDao: TournamentDao, cc: ControllerComponents)(implicit ec: ExecutionContext) extends AbstractController(cc) {
 
   def getAll = Action.async { implicit request =>
     tournamentDao.getAll.map { res =>
@@ -27,7 +28,7 @@ class TournamentController @Inject() (config: Config, tournamentDao: TournamentD
 
   def insertNew = Action.async(parse.json) { implicit request =>
     request.headers.get("X-Authorization") match {
-      case Some(x) if x == config.getString("") =>
+      case Some(x) if x == config.tournamentCreationPassword =>
         request.body.validate[TournamentInput] match {
           case JsError(error) => Future.successful(BadRequest(s"Invalid JSON: $error"))
           case JsSuccess(tournament, _) => tournamentDao.insert(tournament)
