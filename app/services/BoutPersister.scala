@@ -64,8 +64,9 @@ class BoutPersister @Inject() (uploader: FileUploader, boutDao: BoutDao, tournam
     (for {
       tournament <- EitherT(getTournament(fixedData))
       metadata   <- EitherT(validateData(tournament, fixedData))
+      //TODO: parse replays here to get player information
       uploadFile <- EitherT(uploadFile(file))
-      _          <- EitherT(addToDatabase(1, "", "", uploadFile, metadata))
+      _          <- EitherT(addToDatabase(tournament.id, "", "", uploadFile, metadata))
     } yield Successful).run
   }
 
