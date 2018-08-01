@@ -15,4 +15,7 @@ case class ReplayVersion3DataExtractor(headerData: Array[Byte]) extends SpyParty
   override val gameTypeOffset: Int             = 0x34
   override val levelOffset: Int                = 0x38
   override val playerNamesOffset: Int          = 0x50
+  override val selectedMissionsOffset: Int     = 0x3C
+  override val pickedMissionsOffset: Int       = 0x40
+  override val completedMissionsOffset: Int    = 0x44
 }

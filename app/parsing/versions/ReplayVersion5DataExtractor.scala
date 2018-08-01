@@ -20,6 +20,9 @@ case class ReplayVersion5DataExtractor(headerData: Array[Byte]) extends SpyParty
   override val gameTypeOffset: Int             = 0x3C
   override val levelOffset: Int                = 0x40
   override val playerNamesOffset: Int          = 0x60
+  override val selectedMissionsOffset: Int     = 0x44
+  override val pickedMissionsOffset: Int       = 0x48
+  override val completedMissionsOffset: Int    = 0x4C
 
   val spyDisplayNameLengthOffset = 0x30
   val sniperDisplayNameLengthOffset = 0x31
@@ -63,5 +66,6 @@ case class ReplayVersion5DataExtractor(headerData: Array[Byte]) extends SpyParty
   override def startDuration: String \/ Option[Int] = {
     Some(extractInt(headerData, startDurationOffset)).right
   }
+
 
 }

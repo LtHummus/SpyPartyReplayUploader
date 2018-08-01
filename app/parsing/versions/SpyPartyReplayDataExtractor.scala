@@ -28,6 +28,9 @@ trait SpyPartyReplayDataExtractor {
   val gameTypeOffset: Int
   val levelOffset: Int
   val playerNamesOffset: Int
+  val selectedMissionsOffset: Int
+  val pickedMissionsOffset: Int
+  val completedMissionsOffset: Int
 
   def gameResult: String \/ GameResult = {
     for {
@@ -93,6 +96,12 @@ trait SpyPartyReplayDataExtractor {
     extractShort(headerData, sequenceNumberOffset).toInt.right
   }
 
+  def selectedMissions: String \/ List[Mission] = Mission.listFromInt(extractInt(headerData, selectedMissionsOffset)).right
+
+  def pickedMissions: String \/ List[Mission] = Mission.listFromInt(extractInt(headerData, pickedMissionsOffset)).right
+
+  def completedMissions: String \/ List[Mission] = Mission.listFromInt(extractInt(headerData, completedMissionsOffset)).right
+
   def numGuests: String \/ Option[Int] = None.right
 
   def startDuration: String \/ Option[Int] = None.right
@@ -100,17 +109,33 @@ trait SpyPartyReplayDataExtractor {
   def toReplay: String \/ Replay = {
 
     for {
-      gameResult    <- gameResult
-      startTime     <- startTime
-      spy           <- spyName
-      sniper        <- sniperName
-      gameType      <- gameType
-      uuid          <- uuid
-      level         <- level
-      sequence      <- sequenceNumber
-      numGuests     <- numGuests
-      startDuration <- startDuration
-    } yield Replay(spy, sniper, startTime, gameResult, level, gameType, sequence, uuid, versionNumber, numGuests, startDuration)
+      gameResult        <- gameResult
+      startTime         <- startTime
+      spy               <- spyName
+      sniper            <- sniperName
+      gameType          <- gameType
+      uuid              <- uuid
+      level             <- level
+      sequence          <- sequenceNumber
+      numGuests         <- numGuests
+      startDuration     <- startDuration
+      pickedMissions    <- pickedMissions
+      selectedMissions  <- selectedMissions
+      completedMissions <- completedMissions
+    } yield Replay(spy,
+      sniper,
+      startTime,
+      gameResult,
+      level,
+      gameType,
+      sequence,
+      uuid,
+      versionNumber,
+      selectedMissions,
+      pickedMissions,
+      completedMissions,
+      numGuests,
+      startDuration)
   }
 
 }

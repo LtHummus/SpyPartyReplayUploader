@@ -19,6 +19,9 @@ case class Replay(spy: String,
                   sequenceNumber: Int,
                   uuid: String,
                   version: Int,
+                  selectedMissions: List[Mission],
+                  pickedMissions: List[Mission],
+                  completedMissions: List[Mission],
                   startDuration: Option[Int],
                   numGuests: Option[Int]) extends Ordered[Replay] {
   override def compare(that: Replay): Int = if (this.startTime.isBefore(that.startTime)) -1 else 1
