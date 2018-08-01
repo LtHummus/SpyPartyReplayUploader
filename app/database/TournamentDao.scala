@@ -32,10 +32,13 @@ class TournamentDao @Inject() (dbConfigProvider: DatabaseConfigProvider)(implici
   //     cache solution. We're not caching indivual tournaments for now, since we need to dig in to scalacache a bit more
   //     because we don't want to cache the non-existence of a tournament...perhaps using caffeine directly is better?
   implicit val fullTournamentCache: Cache[Seq[Tournament]] = CaffeineCache[Seq[Tournament]]
+  implicit val singleTournamentCache: Cache[Option[Tournament]] = CaffeineCache[Option[Tournament]]
 
   import dbConfig.profile.api._
 
-  def getAll: Future[Seq[Tournament]] = memoizeF[Future, Seq[Tournament]](Some(10.minutes)) {
+
+  //note for the future: potentially increase cache times...
+  def getAll: Future[Seq[Tournament]] = memoizeF[Future, Seq[Tournament]](Some(30.minutes)) {
     dbConfig.db.run {
       Tables.Tournaments.result.map { res =>
         res.map(convertFromDatabase)
@@ -43,8 +46,9 @@ class TournamentDao @Inject() (dbConfigProvider: DatabaseConfigProvider)(implici
     }
   }
 
-  //TODO: cache
-  def getById(id: Int): Future[Option[Tournament]] = {
+  //note: this will cache lookup failures (e.g. None being returned), this is OK _AS LONG AS_ we nuke the cache
+  //      when a new tournament is inserted
+  def getById(id: Int): Future[Option[Tournament]] = memoizeF[Future, Option[Tournament]](Some(30.minutes)) {
     dbConfig.db.run {
       Tables.Tournaments.filter(_.id === id).result.headOption.map { it =>
         it.map(convertFromDatabase)
@@ -53,9 +57,8 @@ class TournamentDao @Inject() (dbConfigProvider: DatabaseConfigProvider)(implici
   }
 
   def insert(newTournament: TournamentInput): Future[Int] = {
-    //XXX: right now, we just purge the full tournament cache to keep things from getting too out of sync, see large
-    //     note above
     fullTournamentCache.removeAll()
+    singleTournamentCache.removeAll()
     val newRow = convertFromInput(newTournament)
     dbConfig.db.run {
       Tables.Tournaments += newRow
