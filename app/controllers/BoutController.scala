@@ -27,12 +27,21 @@ class BoutController @Inject() (boutPersister: BoutPersister, boutDao: BoutDao, 
 
   def upload = Action.async(parse.multipartFormData) { implicit request =>
     request.body.file("file") match {
-      case None => Future.successful(BadRequest("No file specified"))
+      //note: this a little "unpure" because the PersistResult object really belongs to the parser, but we're
+      //      using it here
+      case None => Future.successful(BadRequest(Json.toJson(PersistResult(InvalidZipFile, "Zip file is missing"))))
       case Some(realFile) =>
         val data = request.body.asFormUrlEncoded
-        boutPersister.persist(data, realFile.ref.path).map {
-          case -\/(error)   => InternalServerError(error.toString)
-          case \/-(success) => Ok("Persisted")
+        boutPersister.persist(data, realFile.ref.path).map { res =>
+          val serializedResult = Json.toJson(res)
+          res.kind match {
+            case BadTournamentId => BadRequest(serializedResult)
+            case BadMetadata => PreconditionFailed(serializedResult)
+            case InvalidZipFile => BadRequest(serializedResult)
+            case FailedToAddToDatabase => InternalServerError(serializedResult)
+            case UploadFailure => InternalServerError(serializedResult)
+            case Successful => Ok(serializedResult)
+          }
         }
     }
 

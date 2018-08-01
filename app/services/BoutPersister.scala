@@ -7,19 +7,34 @@ import javax.inject.{Inject, Singleton}
 import models._
 import scalaz._
 import Scalaz._
+import play.api.libs.json.Json
+
+import io.leonard.TraitFormat._
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
-sealed trait PersistResult
-case object BadTournamentId extends PersistResult
-case object MissingMetadata extends PersistResult
-@Deprecated case object BadMetadata extends PersistResult //TODO: this shouldn't be used in favor of more detailed messages
-case object InvalidSelection extends PersistResult
-case object InvalidZipFile extends PersistResult
-case object FailedToAddToDatabase extends PersistResult
-case object UploadFailure extends PersistResult
-case object Successful extends PersistResult
+sealed trait PersistResultKind
+object PersistResultKind {
+  implicit val format = traitFormat[PersistResultKind] <<
+    caseObjectFormat(BadTournamentId) <<
+    caseObjectFormat(BadMetadata) <<
+    caseObjectFormat(InvalidZipFile) <<
+    caseObjectFormat(FailedToAddToDatabase) <<
+    caseObjectFormat(UploadFailure) <<
+    caseObjectFormat(Successful)
+}
+case object BadTournamentId extends PersistResultKind
+case object BadMetadata extends PersistResultKind
+case object InvalidZipFile extends PersistResultKind
+case object FailedToAddToDatabase extends PersistResultKind
+case object UploadFailure extends PersistResultKind
+case object Successful extends PersistResultKind
+
+case class PersistResult(kind: PersistResultKind, message: String)
+object PersistResult {
+  implicit val format = Json.format[PersistResult]
+}
 
 
 @Singleton
@@ -27,9 +42,9 @@ class BoutPersister @Inject() (uploader: FileUploader, boutDao: BoutDao, tournam
 
   private def getTournament(data: Map[String, String]): Future[PersistResult \/ Tournament] = {
     data.get("tournament") match {
-      case None               => Future.successful(BadTournamentId.left)
+      case None               => Future.successful(PersistResult(BadTournamentId, s"Unknown tournament id ${data.get("tournament")}").left)
       case Some(tournamentId) => tournamentDao.getById(tournamentId.toInt).map {
-        case None             => BadTournamentId.left
+        case None             => PersistResult(BadTournamentId, s"Unknown tournament id ${data.get("tournament")}").left
         case Some(tournament) => tournament.right
       }
     }
@@ -37,7 +52,7 @@ class BoutPersister @Inject() (uploader: FileUploader, boutDao: BoutDao, tournam
 
   private def validateData(tournament: Tournament, data: Map[String, String]): Future[PersistResult \/ BoutMetadata] = {
     Future.successful {
-      tournament.validate(data).leftMap(_ => BadMetadata)
+      tournament.validate(data).leftMap(msg => PersistResult(BadMetadata, msg))
     }
   }
 
@@ -45,17 +60,17 @@ class BoutPersister @Inject() (uploader: FileUploader, boutDao: BoutDao, tournam
     val b = Bout(0, tournamentId, player1, player2, url, metadata)
     boutDao.insert(b).transformWith {
       case Success(res) => Future.successful(res.right)
-      case Failure(_) => Future.successful(FailedToAddToDatabase.left)
+      case Failure(_) => Future.successful(PersistResult(FailedToAddToDatabase, "Failed to add bout to database").left)
     }
   }
 
   private def uploadFile(source: Path): Future[PersistResult \/ String] = {
     uploader.uploadFile(source, "hello").map { res =>
-      res.leftMap(_ => UploadFailure)
+      res.leftMap(_ => PersistResult(UploadFailure, "Unable to upload replay to S3"))
     }
   }
 
-  def persist(data: Map[String, Seq[String]], file: Path)(implicit ec: ExecutionContext): Future[PersistResult \/ PersistResult] = {
+  def persist(data: Map[String, Seq[String]], file: Path)(implicit ec: ExecutionContext): Future[PersistResult] = {
     //since this is URLEncoded data, it is possible for each key to map to multiple values, we don't care about that, so
     //just flatten everything out by taking the first
     val fixedData = data.mapValues(_.head)
@@ -67,7 +82,7 @@ class BoutPersister @Inject() (uploader: FileUploader, boutDao: BoutDao, tournam
       //TODO: parse replays here to get player information
       uploadFile <- EitherT(uploadFile(file))
       _          <- EitherT(addToDatabase(tournament.id, "", "", uploadFile, metadata))
-    } yield Successful).run
+    } yield PersistResult(Successful, "Bout persisted successfully")).run.map(_.merge)
   }
 
 }

@@ -36,7 +36,10 @@ libraryDependencies ++= Seq(
   "org.scalaz" %% "scalaz-core" % "7.2.25",
 
   //S3
-  "com.amazonaws" % "aws-java-sdk-s3" % "1.11.375"
+  "com.amazonaws" % "aws-java-sdk-s3" % "1.11.375",
+
+  //serializing sealed traits
+  "io.leonard" %% "play-json-traits" % "1.4.4"
 
 )
 
