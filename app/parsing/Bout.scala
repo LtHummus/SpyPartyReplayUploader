@@ -1,7 +1,5 @@
 package parsing
 
-import com.typesafe.config.ConfigFactory
-
 import scala.annotation.tailrec
 
 
