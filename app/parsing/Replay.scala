@@ -1,10 +1,11 @@
 package parsing
 
-import java.io.DataInputStream
+import java.io.{BufferedInputStream, DataInputStream, FileInputStream, InputStream}
 import java.nio.{ByteBuffer, ByteOrder}
 import java.util.Base64
 
 import org.joda.time.DateTime
+import parsing.versions.SpyPartyReplayDataExtractor
 import scalaz.Scalaz._
 import scalaz._
 
@@ -96,99 +97,6 @@ case class GameType(kind: GameLoadoutType, x: Int, y: Int) {
   }
 }
 
-sealed trait ReplayOffsets {
-  val versionNumber: Int
-  val hasPotentiallyMultipleNames: Boolean = false
-  val hasExtraData: Boolean = false
-
-  val magicNumberOffset: Int
-  val fileVersionOffset: Int
-  val protocolVersionOffset: Int
-  val spyPartyVersionOffset: Int
-  val durationOffset: Int
-  val uuidOffset: Int
-  val timestampOffset: Int
-  val sequenceNumberOffset: Int
-  val spyNameLengthOffset: Int
-  val sniperNameLengthOffset: Int
-  val gameResultOffset: Int
-  val gameTypeOffset: Int
-  val levelOffset: Int
-  val playerNamesOffset: Int
-
-  val spyDisplayNameLengthOffset: Option[Int] = None
-  val sniperDisplayNameLength: Option[Int] = None
-  val startDurationOffset: Option[Int] = None
-  val numGuestsOffset: Option[Int] = None
-}
-
-object Version3ReplayOffsets extends ReplayOffsets {
-  override val versionNumber: Int = 3
-
-  override val magicNumberOffset: Int = 0x00
-  override val fileVersionOffset: Int = 0x04
-  override val protocolVersionOffset: Int = 0x08
-  override val spyPartyVersionOffset: Int = 0x0C
-  override val durationOffset: Int = 0x14
-  override val uuidOffset: Int = 0x18
-  override val timestampOffset: Int = 0x28
-  override val sequenceNumberOffset: Int = 0x2C
-  override val spyNameLengthOffset: Int = 0x2E
-  override val sniperNameLengthOffset: Int = 0x2F
-  override val gameResultOffset: Int = 0x30
-  override val gameTypeOffset: Int = 0x34
-  override val levelOffset: Int = 0x38
-  override val playerNamesOffset: Int = 0x50
-}
-
-object Version4ReplayOffsets extends ReplayOffsets {
-  override val versionNumber: Int = 4
-
-  override val magicNumberOffset: Int      = 0x00
-  override val fileVersionOffset: Int      = 0x04
-  override val protocolVersionOffset: Int  = 0x08
-  override val spyPartyVersionOffset: Int  = 0x0C
-  override val durationOffset: Int         = 0x14
-  override val uuidOffset: Int             = 0x18
-  override val timestampOffset: Int        = 0x28
-  override val sequenceNumberOffset: Int   = 0x2C
-  override val spyNameLengthOffset: Int    = 0x2E
-  override val sniperNameLengthOffset: Int = 0x2F
-  override val gameResultOffset: Int       = 0x34
-  override val gameTypeOffset: Int         = 0x38
-  override val levelOffset: Int            = 0x3C
-  override val playerNamesOffset: Int      = 0x54
-}
-
-//this isn't the greatest
-//@TODO: what we should really do here is put the actual methods for extracting the data in these objects,
-//       so we don't have to mix logic together
-object Version5ReplayOffsets extends ReplayOffsets {
-  override val versionNumber: Int = 5
-  override val hasPotentiallyMultipleNames: Boolean = true
-  override val hasExtraData: Boolean = true
-
-  override val magicNumberOffset: Int      = 0x00
-  override val fileVersionOffset: Int      = 0x04
-  override val protocolVersionOffset: Int  = 0x08
-  override val spyPartyVersionOffset: Int  = 0x0C
-  override val durationOffset: Int         = 0x14
-  override val uuidOffset: Int             = 0x18
-  override val timestampOffset: Int        = 0x28
-  override val sequenceNumberOffset: Int   = 0x2C
-  override val spyNameLengthOffset: Int    = 0x2E
-  override val sniperNameLengthOffset: Int = 0x2F
-  override val gameResultOffset: Int       = 0x38
-  override val gameTypeOffset: Int         = 0x3C
-  override val levelOffset: Int            = 0x40
-  override val playerNamesOffset: Int      = 0x60
-
-  override val spyDisplayNameLengthOffset: Option[Int] = Some(0x30)
-  override val sniperDisplayNameLength: Option[Int]    = Some(0x31)
-  override val startDurationOffset: Option[Int]        = Some(0x50)
-  override val numGuestsOffset: Option[Int]            = Some(0x54)
-}
-
 case class Replay(spy: String,
                   sniper: String,
                   startTime: DateTime,
@@ -222,128 +130,9 @@ case class Replay(spy: String,
 }
 
 object Replay {
-
   val HeaderDataSizeBytes = 416
 
-  private def extractInt(data: Array[Byte], index: Int) = {
-    val buffer = ByteBuffer.wrap(data.slice(index, index + 4))
-    buffer.order(ByteOrder.LITTLE_ENDIAN)
-    buffer.getInt
-  }
-
-  private def extractShort(data: Array[Byte], index: Int) = {
-    val buffer = ByteBuffer.wrap(data.slice(index, index + 2))
-    buffer.order(ByteOrder.LITTLE_ENDIAN)
-    buffer.getShort
-  }
-
-  private def verifyMagicNumber(data: Array[Byte]): String \/ String = {
-    if (data(0) == 'R' && data(1) == 'P' && data(2) == 'L' && data(3) == 'Y')
-      "Magic Number OK".right
-    else
-      "Magic number incorrect".left
-  }
-
-  private def getFileVersionOffsets(data: Byte): String \/ ReplayOffsets = {
-    data match {
-      case 0x03 => Version3ReplayOffsets.right
-      case 0x04 => Version4ReplayOffsets.right
-      case 0x05 => Version5ReplayOffsets.right
-      case _    => "Unknown replay header".left
-    }
-  }
-
-  private def extractSpyNameLength(headerData: Array[Byte], offsets: ReplayOffsets) = {
-    if (offsets.hasPotentiallyMultipleNames) {
-      val usernameLength = headerData(offsets.spyNameLengthOffset)
-      val displayNameLength = headerData(offsets.spyDisplayNameLengthOffset.get)
-
-      if (displayNameLength != 0) {
-        displayNameLength.right
-      } else {
-        usernameLength.right
-      }
-    } else {
-      headerData(offsets.spyNameLengthOffset).right
-    }
-  }
-
-  private def extractSniperNameLength(headerData: Array[Byte], offsets: ReplayOffsets) = {
-    if (offsets.hasPotentiallyMultipleNames) {
-      val usernameLength = headerData(offsets.sniperNameLengthOffset)
-      val displayNameLength = headerData(offsets.sniperDisplayNameLength.get)
-
-      if (displayNameLength != 0) {
-        displayNameLength.right
-      } else {
-        usernameLength.right
-      }
-    } else {
-      headerData(offsets.sniperNameLengthOffset).right
-    }
-  }
-
-  private def extractGameResult(headerData: Array[Byte], offsets: ReplayOffsets): String \/ GameResult = {
-    for {
-      gameResult <- GameResultEnum.fromInt(headerData(offsets.gameResultOffset))
-    } yield gameResult
-  }
-
-  private def extractStartTime(headerData: Array[Byte], offsets: ReplayOffsets) = {
-    val timeBytes = headerData.slice(offsets.timestampOffset, offsets.timestampOffset + 4)
-    val buffer = ByteBuffer.wrap(timeBytes)
-    buffer.order(ByteOrder.LITTLE_ENDIAN)
-    val res = buffer.getInt() & 0xFFFFFFFFL
-
-    new DateTime(res * 1000).right
-  }
-
-  private def extractSpyName(headerData: Array[Byte], offsets: ReplayOffsets) = {
-    val spyNameLength = headerData(offsets.spyNameLengthOffset)
-    new String(headerData.slice(offsets.playerNamesOffset, offsets.playerNamesOffset + spyNameLength), "UTF-8").right
-  }
-
-  private def extractSniperName(headerData: Array[Byte], offsets: ReplayOffsets) = {
-    val spyNameLength = headerData(offsets.spyNameLengthOffset)
-    val sniperNameLength = headerData(offsets.sniperNameLengthOffset)
-    new String(headerData.slice(offsets.playerNamesOffset + spyNameLength, offsets.playerNamesOffset + spyNameLength + sniperNameLength), "UTF-8").right
-  }
-
-  private def extractLevel(headerData: Array[Byte], offsets: ReplayOffsets): String \/ Level = {
-    val levelId = extractInt(headerData, offsets.levelOffset)
-
-    val levelObj = Level.AllLevels.filter(_.checksum == levelId)
-
-    levelObj.length match {
-      case 0 => s"No level found with id $levelId".left
-      case 1 => levelObj.head.right
-      case _ => s"Multiple levels found with id $levelId".left
-    }
-  }
-
-  private def extractSequenceNumber(headerData: Array[Byte], offsets: ReplayOffsets): String \/ Int = {
-    extractShort(headerData, offsets.sequenceNumberOffset).toInt.right
-  }
-
-  private def extractUuid(headerData: Array[Byte], offsets: ReplayOffsets): String \/ String = {
-   Base64
-      .getEncoder
-      .encodeToString(headerData.slice(offsets.uuidOffset, offsets.uuidOffset + 16)) //encode bytes to base64 string
-      .split("=")(0)                                     //drop trailing = signs
-      .replaceAll("\\+", "-")                            //replace + with - because that's how spyparty does things
-      .replaceAll("/", "_")                              //replace / with _ ibid
-      .right
-  }
-
-  private def extractNumGuests(bytes: Array[Byte], offsets: ReplayOffsets) = {
-    offsets.numGuestsOffset.map(extractInt(bytes, _)).right
-  }
-
-  private def extractStartDuration(bytes: Array[Byte], offsets: ReplayOffsets) = {
-    offsets.startDurationOffset.map(extractInt(bytes, _)).right
-  }
-
-  def fromInputStream(is: DataInputStream): String \/ Replay = {
+  def fromInputStream(is: InputStream): String \/ Replay = {
     val headerData = new Array[Byte](HeaderDataSizeBytes)
 
     val bytesRead = is.read(headerData)
@@ -352,19 +141,7 @@ object Replay {
       return "Could not read entire replay data header".left
     }
 
-    for {
-      _             <- verifyMagicNumber(headerData)
-      dataOffsets   <- getFileVersionOffsets(headerData(4))
-      gameResult    <- extractGameResult(headerData, dataOffsets)
-      startTime     <- extractStartTime(headerData, dataOffsets)
-      spy           <- extractSpyName(headerData, dataOffsets)
-      sniper        <- extractSniperName(headerData, dataOffsets)
-      gameType      <- GameType.fromInt(extractInt(headerData, dataOffsets.gameTypeOffset))
-      uuid          <- extractUuid(headerData, dataOffsets)
-      level         <- extractLevel(headerData, dataOffsets)
-      sequence      <- extractSequenceNumber(headerData, dataOffsets)
-      numGuests     <- extractNumGuests(headerData, dataOffsets)
-      startDuration <- extractStartDuration(headerData, dataOffsets)
-    } yield Replay(spy, sniper, startTime, gameResult, level, gameType, sequence, uuid, dataOffsets.versionNumber, numGuests, startDuration)
+    SpyPartyReplayDataExtractor.parseReplay(headerData)
   }
+
 }
