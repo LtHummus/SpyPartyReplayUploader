@@ -1,4 +1,4 @@
-package parsing
+package replays
 
 import scalaz.Scalaz._
 import scalaz._

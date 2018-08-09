@@ -1,4 +1,4 @@
-package parsing.versions
+package replays.versions
 
 case class ReplayVersion4DataExtractor(headerData: Array[Byte]) extends SpyPartyReplayDataExtractor {
 

@@ -1,6 +1,6 @@
-package parsing
+package replays
 
-import parsing.GameLoadoutTypeEnum.GameLoadoutType
+import replays.GameLoadoutTypeEnum.GameLoadoutType
 import scalaz.\/
 import scalaz.syntax.either._
 

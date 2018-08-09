@@ -1,4 +1,4 @@
-package parsing.versions
+package replays.versions
 
 import scalaz.\/
 import scalaz.syntax.either._

@@ -8,12 +8,15 @@ import models._
 import scalaz._
 import Scalaz._
 import play.api.libs.json.Json
-
 import io.leonard.TraitFormat._
+import org.apache.commons.io.IOUtils
+import replays.Replay
+import replays._
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
+//TODO: make a real serializer instead of this garbage
 sealed trait PersistResultKind
 object PersistResultKind {
   implicit val format = traitFormat[PersistResultKind] <<
@@ -38,7 +41,7 @@ object PersistResult {
 
 
 @Singleton
-class BoutPersister @Inject() (uploader: FileUploader, boutDao: BoutDao, tournamentDao: TournamentDao)(implicit ec: ExecutionContext) {
+class BoutPersister @Inject() (uploader: FileUploader, boutDao: BoutDao, tournamentDao: TournamentDao, zipParser: SpyPartyZipParser)(implicit ec: ExecutionContext) {
 
   private def getTournament(data: Map[String, String]): Future[PersistResult \/ Tournament] = {
     data.get("tournament") match {
@@ -70,6 +73,35 @@ class BoutPersister @Inject() (uploader: FileUploader, boutDao: BoutDao, tournam
     }
   }
 
+  private def parseZipFile(source: Path): Future[PersistResult \/ List[Replay]] = {
+    Future {
+      IOUtils.toByteArray(source.toUri)
+    }.map { data => zipParser.parseZipStream(data).leftMap(x => PersistResult(InvalidZipFile, x)) }
+
+  }
+
+  private def validateReplays(replays: List[Replay], tournament: Tournament): Future[PersistResult \/ Unit] = {
+    if (tournament.configuration.shouldScoreMatch) {
+      //force unwrap because if we're in here, these _MUST_ be defined
+      val tiesAllowed = tournament.configuration.allowTies.get
+      val pointsToWin = tournament.configuration.pointsToWin.get
+
+      if (replays.isTie && !tiesAllowed) {
+        Future.successful(PersistResult(InvalidZipFile, "Replays end in a tie, but ties aren't allowed").left)
+      } else {
+        val winnerScore = Math.max(replays.player1Score, replays.player2Score)
+        if (winnerScore < pointsToWin) {
+          Future.successful(PersistResult(InvalidZipFile, s"Winner only won $winnerScore games, but needs $pointsToWin").left)
+        } else {
+          Future.successful(().right)
+        }
+      }
+
+    } else {
+      Future.successful(().right)
+    }
+  }
+
   def persist(data: Map[String, Seq[String]], file: Path)(implicit ec: ExecutionContext): Future[PersistResult] = {
     //since this is URLEncoded data, it is possible for each key to map to multiple values, we don't care about that, so
     //just flatten everything out by taking the first
@@ -79,9 +111,10 @@ class BoutPersister @Inject() (uploader: FileUploader, boutDao: BoutDao, tournam
     (for {
       tournament <- EitherT(getTournament(fixedData))
       metadata   <- EitherT(validateData(tournament, fixedData))
-      //TODO: parse replays here to get player information
+      replays    <- EitherT(parseZipFile(file))
+      _          <- EitherT(validateReplays(replays, tournament))
       uploadFile <- EitherT(uploadFile(file))
-      _          <- EitherT(addToDatabase(tournament.id, "", "", uploadFile, metadata))
+      _          <- EitherT(addToDatabase(tournament.id, replays.player1, replays.player2, uploadFile, metadata))
     } yield PersistResult(Successful, "Bout persisted successfully")).run.map(_.merge)
   }
 

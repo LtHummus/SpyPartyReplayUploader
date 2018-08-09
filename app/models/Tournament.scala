@@ -4,7 +4,7 @@ import play.api.libs.json.Json
 import scalaz.\/
 import scalaz.syntax.either._
 
-case class Tournament(id: Int, name: String, active: Boolean, formItems: TournamentSubmissionForm) {
+case class Tournament(id: Int, name: String, active: Boolean, formItems: TournamentSubmissionForm, configuration: TournamentConfiguration) {
   def validate(data: Map[String, String]): String \/ BoutMetadata = {
     val requiredFieldNames = formItems.items.map(_.internalName).toSet
     val fieldsWeHave = data.keys.toSet
@@ -32,7 +32,7 @@ object Tournament {
   implicit val format = Json.format[Tournament]
 }
 
-case class TournamentInput(name: String, active: Boolean, formItems: TournamentSubmissionForm)
+case class TournamentInput(name: String, active: Boolean, formItems: TournamentSubmissionForm, configuration: TournamentConfiguration)
 object TournamentInput {
   implicit val format = Json.format[TournamentInput]
 }

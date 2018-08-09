@@ -1,13 +1,13 @@
-package parsing
+package replays
 
 import java.io.InputStream
 
 import org.joda.time.DateTime
-import parsing.versions.SpyPartyReplayDataExtractor
+import replays.versions.SpyPartyReplayDataExtractor
 import scalaz.\/
 import scalaz.syntax.either._
 
-import parsing.GameResultEnum._
+import replays.GameResultEnum._
 
 
 case class Replay(spy: String,

@@ -1,4 +1,4 @@
-package parsing
+package replays
 
 sealed trait Mission
 case object BugAmbassador extends Mission

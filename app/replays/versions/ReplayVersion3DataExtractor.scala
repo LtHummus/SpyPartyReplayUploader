@@ -1,4 +1,4 @@
-package parsing.versions
+package replays.versions
 
 case class ReplayVersion3DataExtractor(headerData: Array[Byte]) extends SpyPartyReplayDataExtractor {
   override val versionNumber: Int = 3

@@ -1,11 +1,11 @@
-package parsing.versions
+package replays.versions
 
 import java.nio.{ByteBuffer, ByteOrder}
 import java.util.Base64
 
 import org.joda.time.DateTime
-import parsing._
-import parsing.GameResultEnum.GameResult
+import replays._
+import replays.GameResultEnum.GameResult
 import scalaz.\/
 import scalaz.syntax.either._
 

@@ -2,13 +2,14 @@ package database
 
 import database.Tables.TournamentsRow
 import javax.inject.{Inject, Singleton}
-import models.{Tournament, TournamentInput, TournamentSubmissionForm}
+import models.{Tournament, TournamentConfiguration, TournamentInput, TournamentSubmissionForm}
 import play.api.db.slick.DatabaseConfigProvider
 import play.api.libs.json.Json
 import scalacache.Cache
 import scalacache.caffeine.CaffeineCache
 import scalacache.memoization._
 import scalacache.modes.scalaFuture._
+
 import scala.concurrent.duration._
 import slick.jdbc.JdbcProfile
 
@@ -17,11 +18,19 @@ import scala.concurrent.{ExecutionContext, Future}
 @Singleton
 class TournamentDao @Inject() (dbConfigProvider: DatabaseConfigProvider)(implicit ec: ExecutionContext) {
   private def convertFromDatabase(dbRow: Tables.TournamentsRow): Tournament = {
-    Tournament(dbRow.id, dbRow.name, dbRow.active, Json.parse(dbRow.formItems).as[TournamentSubmissionForm])
+    Tournament(dbRow.id, dbRow.name,
+      dbRow.active,
+      Json.parse(dbRow.formItems).as[TournamentSubmissionForm],
+      Json.parse(dbRow.configuration).as[TournamentConfiguration])
   }
 
   private def convertFromInput(input: TournamentInput) = {
-    TournamentsRow(0, input.name, input.active, Json.toJson(input.formItems).toString())
+    TournamentsRow(0,
+      input.name,
+      input.active,
+      Json.toJson(input.formItems).toString(),
+      Json.toJson(input.configuration).toString()
+    )
   }
 
   val dbConfig = dbConfigProvider.get[JdbcProfile]
