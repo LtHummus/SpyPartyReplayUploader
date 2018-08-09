@@ -81,15 +81,7 @@ trait SpyPartyReplayDataExtractor {
   }
 
   def level: String \/ Level = {
-    val levelId = extractInt(headerData, levelOffset)
-
-    val levelObj = Level.AllLevels.filter(_.checksum == levelId)
-
-    levelObj.length match {
-      case 0 => s"No level found with id $levelId".left
-      case 1 => levelObj.head.right
-      case _ => s"Multiple levels found with id $levelId".left
-    }
+    Level.getLevelByChecksum(extractInt(headerData, levelOffset))
   }
 
   def sequenceNumber: String \/ Int = {

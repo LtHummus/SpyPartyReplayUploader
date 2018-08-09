@@ -14,7 +14,7 @@ trait Tables {
   import slick.jdbc.{GetResult => GR}
 
   /** DDL for all tables. Call .create to execute. */
-  lazy val schema: profile.SchemaDescription = Bouts.schema ++ Tournaments.schema
+  lazy val schema: profile.SchemaDescription = Bouts.schema ++ Games.schema ++ Tournaments.schema
   @deprecated("Use .schema instead of .ddl", "3.0")
   def ddl = schema
 
@@ -55,6 +55,71 @@ trait Tables {
   }
   /** Collection-like TableQuery object for table Bouts */
   lazy val Bouts = new TableQuery(tag => new Bouts(tag))
+
+  /** Entity class storing rows of table Games
+   *  @param id Database column id SqlType(INT), AutoInc, PrimaryKey
+   *  @param bout Database column bout SqlType(INT)
+   *  @param spy Database column spy SqlType(TINYTEXT), Length(255,true)
+   *  @param sniper Database column sniper SqlType(TINYTEXT), Length(255,true)
+   *  @param result Database column result SqlType(TINYINT)
+   *  @param level Database column level SqlType(INT)
+   *  @param loadout Database column loadout SqlType(TINYTEXT), Length(255,true)
+   *  @param uuid Database column uuid SqlType(VARCHAR), Length(50,true)
+   *  @param version Database column version SqlType(TINYINT)
+   *  @param selectedMissions Database column selected_missions SqlType(SMALLINT)
+   *  @param pickedMissions Database column picked_missions SqlType(SMALLINT)
+   *  @param accomplishedMissions Database column accomplished_missions SqlType(SMALLINT)
+   *  @param startDurationSeconds Database column start_duration_seconds SqlType(SMALLINT), Default(None)
+   *  @param numGuests Database column num_guests SqlType(SMALLINT), Default(None) */
+  case class GamesRow(id: Int, bout: Int, spy: String, sniper: String, result: Byte, level: Int, loadout: String, uuid: String, version: Byte, selectedMissions: Int, pickedMissions: Int, accomplishedMissions: Int, startDurationSeconds: Option[Int] = None, numGuests: Option[Int] = None)
+  /** GetResult implicit for fetching GamesRow objects using plain SQL queries */
+  implicit def GetResultGamesRow(implicit e0: GR[Int], e1: GR[String], e2: GR[Byte], e3: GR[Option[Int]]): GR[GamesRow] = GR{
+    prs => import prs._
+    GamesRow.tupled((<<[Int], <<[Int], <<[String], <<[String], <<[Byte], <<[Int], <<[String], <<[String], <<[Byte], <<[Int], <<[Int], <<[Int], <<?[Int], <<?[Int]))
+  }
+  /** Table description of table games. Objects of this class serve as prototypes for rows in queries. */
+  class Games(_tableTag: Tag) extends profile.api.Table[GamesRow](_tableTag, Some("uploader"), "games") {
+    def * = (id, bout, spy, sniper, result, level, loadout, uuid, version, selectedMissions, pickedMissions, accomplishedMissions, startDurationSeconds, numGuests) <> (GamesRow.tupled, GamesRow.unapply)
+    /** Maps whole row to an option. Useful for outer joins. */
+    def ? = (Rep.Some(id), Rep.Some(bout), Rep.Some(spy), Rep.Some(sniper), Rep.Some(result), Rep.Some(level), Rep.Some(loadout), Rep.Some(uuid), Rep.Some(version), Rep.Some(selectedMissions), Rep.Some(pickedMissions), Rep.Some(accomplishedMissions), startDurationSeconds, numGuests).shaped.<>({r=>import r._; _1.map(_=> GamesRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get, _8.get, _9.get, _10.get, _11.get, _12.get, _13, _14)))}, (_:Any) =>  throw new Exception("Inserting into ? projection not supported."))
+
+    /** Database column id SqlType(INT), AutoInc, PrimaryKey */
+    val id: Rep[Int] = column[Int]("id", O.AutoInc, O.PrimaryKey)
+    /** Database column bout SqlType(INT) */
+    val bout: Rep[Int] = column[Int]("bout")
+    /** Database column spy SqlType(TINYTEXT), Length(255,true) */
+    val spy: Rep[String] = column[String]("spy", O.Length(255,varying=true))
+    /** Database column sniper SqlType(TINYTEXT), Length(255,true) */
+    val sniper: Rep[String] = column[String]("sniper", O.Length(255,varying=true))
+    /** Database column result SqlType(TINYINT) */
+    val result: Rep[Byte] = column[Byte]("result")
+    /** Database column level SqlType(INT) */
+    val level: Rep[Int] = column[Int]("level")
+    /** Database column loadout SqlType(TINYTEXT), Length(255,true) */
+    val loadout: Rep[String] = column[String]("loadout", O.Length(255,varying=true))
+    /** Database column uuid SqlType(VARCHAR), Length(50,true) */
+    val uuid: Rep[String] = column[String]("uuid", O.Length(50,varying=true))
+    /** Database column version SqlType(TINYINT) */
+    val version: Rep[Byte] = column[Byte]("version")
+    /** Database column selected_missions SqlType(SMALLINT) */
+    val selectedMissions: Rep[Int] = column[Int]("selected_missions")
+    /** Database column picked_missions SqlType(SMALLINT) */
+    val pickedMissions: Rep[Int] = column[Int]("picked_missions")
+    /** Database column accomplished_missions SqlType(SMALLINT) */
+    val accomplishedMissions: Rep[Int] = column[Int]("accomplished_missions")
+    /** Database column start_duration_seconds SqlType(SMALLINT), Default(None) */
+    val startDurationSeconds: Rep[Option[Int]] = column[Option[Int]]("start_duration_seconds", O.Default(None))
+    /** Database column num_guests SqlType(SMALLINT), Default(None) */
+    val numGuests: Rep[Option[Int]] = column[Option[Int]]("num_guests", O.Default(None))
+
+    /** Foreign key referencing Bouts (database name fk_bout) */
+    lazy val boutsFk = foreignKey("fk_bout", bout, Bouts)(r => r.id, onUpdate=ForeignKeyAction.NoAction, onDelete=ForeignKeyAction.NoAction)
+
+    /** Uniqueness Index over (uuid) (database name uiuid) */
+    val index1 = index("uiuid", uuid, unique=true)
+  }
+  /** Collection-like TableQuery object for table Games */
+  lazy val Games = new TableQuery(tag => new Games(tag))
 
   /** Entity class storing rows of table Tournaments
    *  @param id Database column id SqlType(INT), AutoInc, PrimaryKey

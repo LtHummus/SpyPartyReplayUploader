@@ -21,7 +21,14 @@ object Mission {
     PurloinGuestList,
     FingerprintAmbassador)
 
+  private val MissionsWithIndex: List[(Mission, Int)] = AllMissions.zipWithIndex
+
   def listFromInt(data: Int): List[Mission] = {
-    AllMissions.zipWithIndex.filterNot{ case (_, x) => (data & (1 << x)) == 0 }.map(_._1)
+    MissionsWithIndex.filterNot{ case (_, x) => (data & (1 << x)) == 0 }.map(_._1)
+  }
+
+  def toInt(missions: List[Mission]): Int = {
+    val missionSet = missions.toSet
+    MissionsWithIndex.filter{ case (m, _) => missionSet.contains(m) }.map{ case (_, x) => 1 << x }.fold(0)((state, curr) => state | curr)
   }
 }

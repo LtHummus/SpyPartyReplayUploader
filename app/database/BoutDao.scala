@@ -39,7 +39,9 @@ class BoutDao @Inject() (dbConfigProvider: DatabaseConfigProvider)(implicit ec: 
   def insert(bout: Bout): Future[Int] = {
     val newBout = BoutsRow(0, bout.tournament, bout.player1, bout.player2, bout.url, Json.toJson(bout.metadata).toString())
     dbConfig.db.run {
-      Tables.Bouts += newBout
-    }
+      Tables.Bouts.returning(Tables.Bouts.map(_.id)).into((bout, id) => bout.copy(id = id)) += newBout
+    }.map(_.id)
+
+
   }
 }

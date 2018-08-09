@@ -2,7 +2,7 @@ package services
 
 import java.nio.file.Path
 
-import database.{BoutDao, TournamentDao}
+import database.{BoutDao, GameDao, TournamentDao}
 import javax.inject.{Inject, Singleton}
 import models._
 import scalaz._
@@ -41,7 +41,7 @@ object PersistResult {
 
 
 @Singleton
-class BoutPersister @Inject() (uploader: FileUploader, boutDao: BoutDao, tournamentDao: TournamentDao, zipParser: SpyPartyZipParser)(implicit ec: ExecutionContext) {
+class BoutPersister @Inject() (uploader: FileUploader, boutDao: BoutDao, tournamentDao: TournamentDao, gameDao: GameDao,zipParser: SpyPartyZipParser)(implicit ec: ExecutionContext) {
 
   private def getTournament(data: Map[String, String]): Future[PersistResult \/ Tournament] = {
     data.get("tournament") match {
@@ -64,6 +64,13 @@ class BoutPersister @Inject() (uploader: FileUploader, boutDao: BoutDao, tournam
     boutDao.insert(b).transformWith {
       case Success(res) => Future.successful(res.right)
       case Failure(_) => Future.successful(PersistResult(FailedToAddToDatabase, "Failed to add bout to database").left)
+    }
+  }
+
+  private def addGamesToDatabase(boutId: Int, replays: List[Replay]): Future[PersistResult \/ Unit] = {
+    gameDao.bulkInsertFromReplay(boutId, replays).transformWith {
+      case Success(_) => Future.successful(().right)
+      case Failure(_) => Future.successful(PersistResult(FailedToAddToDatabase, "Failed to persist games").left)
     }
   }
 
@@ -107,14 +114,16 @@ class BoutPersister @Inject() (uploader: FileUploader, boutDao: BoutDao, tournam
     //just flatten everything out by taking the first
     val fixedData = data.mapValues(_.head)
 
-
+    //FIXME: this should really be done in a transaction...
     (for {
       tournament <- EitherT(getTournament(fixedData))
       metadata   <- EitherT(validateData(tournament, fixedData))
       replays    <- EitherT(parseZipFile(file))
       _          <- EitherT(validateReplays(replays, tournament))
       uploadFile <- EitherT(uploadFile(file))
-      _          <- EitherT(addToDatabase(tournament.id, replays.player1, replays.player2, uploadFile, metadata))
+      boutId     <- EitherT(addToDatabase(tournament.id, replays.player1, replays.player2, uploadFile, metadata))
+      _          <- EitherT(addGamesToDatabase(boutId, replays))
+
     } yield PersistResult(Successful, "Bout persisted successfully")).run.map(_.merge)
   }
 

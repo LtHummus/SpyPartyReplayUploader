@@ -49,6 +49,16 @@ object Level {
     Level("Moderne", 775418203)
   )
 
+  def getLevelByChecksum(checksum: Int): String \/ Level = {
+    val levelObj = AllLevels.filter(_.checksum == checksum)
+
+    levelObj.length match {
+      case 0 => s"No level found with id $checksum".left
+      case 1 => levelObj.head.right
+      case _ => s"Multiple levels found with id $checksum".left
+    }
+  }
+
   def getLevelByName(name: String): String \/ Level = {
     val results = AllLevels.filter(_.name == name)
     results.size match {
