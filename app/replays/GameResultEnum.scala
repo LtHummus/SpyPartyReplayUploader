@@ -1,5 +1,6 @@
 package replays
 
+import play.api.libs.json._
 import scalaz.\/
 import scalaz.syntax.either._
 
@@ -7,6 +8,23 @@ object GameResultEnum {
   sealed abstract class GameResult(val niceName: String, val internalId: Int) {
     override def toString: String = niceName
   }
+
+  private val writes: Writes[GameResult] = (x: GameResult) => {
+    JsString(x.toString)
+  }
+
+  private val reads: Reads[GameResult] = (json: JsValue) => {
+    json.as[String] match {
+      case "Mission Win"   => JsSuccess(MissionWin)
+      case "Spy Timeout"   => JsSuccess(SpyTimeout)
+      case "Spy Shot"      => JsSuccess(SpyShot)
+      case "Civilian Shot" => JsSuccess(CivilianShot)
+      case "In Progress"   => JsSuccess(InProgress)
+      case _               => JsError("Unknown game result")
+    }
+  }
+
+  implicit val format: Format[GameResult] = Format(reads, writes)
 
   case object MissionWin extends GameResult("Mission Win", 0)
   case object SpyTimeout extends GameResult("Spy Timeout", 1)

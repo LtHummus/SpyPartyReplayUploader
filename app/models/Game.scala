@@ -1,12 +1,13 @@
 package models
 
 import play.api.libs.json.Json
+import replays.GameResultEnum.GameResult
 
 case class Game(id: Int,
                 bout: Int,
                 spy: String,
                 sniper: String,
-                result: Int,
+                result: GameResult,
                 level: String,
                 loadout: String,
                 uuid: String,

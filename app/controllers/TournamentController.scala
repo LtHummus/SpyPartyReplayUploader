@@ -4,7 +4,7 @@ import com.typesafe.config.Config
 import config.SpyPartyReplayUploaderConfig
 import database.{BoutDao, TournamentDao}
 import javax.inject.{Inject, Singleton}
-import models.TournamentInput
+import models.{TournamentBoutInfo, TournamentInput}
 import play.api.libs.json.{JsError, JsSuccess, Json}
 import play.api.mvc.{AbstractController, ControllerComponents}
 
@@ -26,16 +26,21 @@ class TournamentController @Inject()(config: SpyPartyReplayUploaderConfig, boutD
     }
   }
 
-  def getGamesForTournament(x: Int) = Action.async { implicit request =>
-    boutDao.getByTournamentId(x).map { res =>
-      val jsonData = Json.toJson(res)
-      Ok(jsonData)
+  def getBoutsForTournament(x: Int) = Action.async { implicit request =>
+    val start = request.getQueryString("start").map(_.toInt).getOrElse(config.DefaultStart)
+    val count = Math.min(request.getQueryString("count").map(_.toInt).getOrElse(config.DefaultCount), config.MaxCount)
+
+    for {
+      bouts     <- boutDao.getByTournamentId(x, start, count)
+      boutCount <- boutDao.getCountForTournament(x)
+    } yield {
+      Ok(Json.toJson(TournamentBoutInfo(x, boutCount, bouts)))
     }
   }
 
   def insertNew = Action.async(parse.json) { implicit request =>
     request.headers.get("X-Authorization") match {
-      case Some(x) if x == config.tournamentCreationPassword =>
+      case Some(x) if x == config.TournamentCreationPassword =>
         request.body.validate[TournamentInput] match {
           case JsError(error) => Future.successful(BadRequest(s"Invalid JSON: $error"))
           case JsSuccess(tournament, _) => tournamentDao.insert(tournament)

@@ -28,11 +28,17 @@ class BoutDao @Inject() (dbConfigProvider: DatabaseConfigProvider)(implicit ec: 
     }
   }
 
-  def getByTournamentId(x: Int): Future[Seq[Bout]] = {
+  def getByTournamentId(x: Int, start: Int = 0, count: Int = 20): Future[Seq[Bout]] = {
     dbConfig.db.run {
-      Tables.Bouts.filter(_.tournament === x).result.map { res =>
+      Tables.Bouts.filter(_.tournament === x).drop(start).take(count).result.map { res =>
         res.map(convertToBout)
       }
+    }
+  }
+
+  def getCountForTournament(x: Int): Future[Int] = {
+    dbConfig.db.run {
+      Tables.Bouts.filter(_.tournament === x).size.result
     }
   }
 

@@ -4,7 +4,7 @@ import database.Tables.GamesRow
 import javax.inject.{Inject, Singleton}
 import models.Game
 import play.api.db.slick.DatabaseConfigProvider
-import replays.{Level, Mission, Replay}
+import replays.{GameResultEnum, Level, Mission, Replay}
 import slick.jdbc.JdbcProfile
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -18,7 +18,7 @@ class GameDao @Inject() (dbConfigProvider: DatabaseConfigProvider)(implicit ec: 
       x.bout,
       x.spy,
       x.sniper,
-      x.result,
+      GameResultEnum.fromInt(x.result).getOrElse(???),  //TODO: some sane error handling here
       Level.getLevelByChecksum(x.level).map(_.name).getOrElse("Unknown"),
       x.loadout,
       x.uuid,
