@@ -2,7 +2,7 @@ package controllers
 
 import com.typesafe.config.Config
 import config.SpyPartyReplayUploaderConfig
-import database.TournamentDao
+import database.{BoutDao, TournamentDao}
 import javax.inject.{Inject, Singleton}
 import models.TournamentInput
 import play.api.libs.json.{JsError, JsSuccess, Json}
@@ -11,7 +11,7 @@ import play.api.mvc.{AbstractController, ControllerComponents}
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class TournamentController @Inject()(config: SpyPartyReplayUploaderConfig, tournamentDao: TournamentDao, cc: ControllerComponents)(implicit ec: ExecutionContext) extends AbstractController(cc) {
+class TournamentController @Inject()(config: SpyPartyReplayUploaderConfig, boutDao: BoutDao, tournamentDao: TournamentDao, cc: ControllerComponents)(implicit ec: ExecutionContext) extends AbstractController(cc) {
 
   def getAll = Action.async { implicit request =>
     tournamentDao.getAll.map { res =>
@@ -23,6 +23,13 @@ class TournamentController @Inject()(config: SpyPartyReplayUploaderConfig, tourn
     tournamentDao.getById(x).map {
       case Some(tournament) => Ok(Json.toJson(tournament))
       case None             => NotFound(s"Tournament with id $x not found")
+    }
+  }
+
+  def getGamesForTournament(x: Int) = Action.async { implicit request =>
+    boutDao.getByTournamentId(x).map { res =>
+      val jsonData = Json.toJson(res)
+      Ok(jsonData)
     }
   }
 

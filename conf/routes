@@ -11,9 +11,11 @@ POST    /testparse                  controllers.HomeController.parseForm
 GET     /api/tournaments            controllers.TournamentController.getAll
 GET     /api/tournaments/:id        controllers.TournamentController.getById(id: Int)
 POST    /api/tournaments            controllers.TournamentController.insertNew
+GET     /api/tournaments/:id/games  controllers.TournamentController.getGamesForTournament(id: Int)
 
 
 GET     /api/bouts/:id              controllers.BoutController.getById(id: Int)
+GET     /api/bouts/:id/games        controllers.BoutController.getGamesByBoutId(id: Int)
 GET     /api/bouts/tournament/:id   controllers.BoutController.getByTournamentId(id: Int)
 POST    /api/bouts                  controllers.BoutController.upload
 
