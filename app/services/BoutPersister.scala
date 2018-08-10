@@ -2,7 +2,7 @@ package services
 
 import java.nio.file.Path
 
-import database.{BoutDao, GameDao, TournamentDao}
+import database.{BoutDao, BulkPersistUtil, GameDao, TournamentDao}
 import javax.inject.{Inject, Singleton}
 import models._
 import scalaz._
@@ -41,7 +41,7 @@ object PersistResult {
 
 
 @Singleton
-class BoutPersister @Inject() (uploader: FileUploader, boutDao: BoutDao, tournamentDao: TournamentDao, gameDao: GameDao,zipParser: SpyPartyZipParser)(implicit ec: ExecutionContext) {
+class BoutPersister @Inject()(uploader: FileUploader, tournamentDao: TournamentDao, bulkInserter: BulkPersistUtil, zipParser: SpyPartyZipParser)(implicit ec: ExecutionContext) {
 
   private def getTournament(data: Map[String, String]): Future[PersistResult \/ Tournament] = {
     data.get("tournament") match {
@@ -59,20 +59,19 @@ class BoutPersister @Inject() (uploader: FileUploader, boutDao: BoutDao, tournam
     }
   }
 
-  private def addToDatabase(tournamentId: Int, player1: String, player2: String, url: String, metadata: BoutMetadata): Future[PersistResult \/ Int] = {
+  private def addToDatabase(tournamentId: Int,
+                            player1: String,
+                            player2: String,
+                            url: String,
+                            metadata: BoutMetadata,
+                            replays: List[Replay]): Future[PersistResult \/ Unit] = {
     val b = Bout(0, tournamentId, player1, player2, url, metadata)
-    boutDao.insert(b).transformWith {
+    bulkInserter.persistAllBoutData(b, replays).transformWith {
       case Success(res) => Future.successful(res.right)
       case Failure(_) => Future.successful(PersistResult(FailedToAddToDatabase, "Failed to add bout to database").left)
     }
   }
 
-  private def addGamesToDatabase(boutId: Int, replays: List[Replay]): Future[PersistResult \/ Unit] = {
-    gameDao.bulkInsertFromReplay(boutId, replays).transformWith {
-      case Success(_) => Future.successful(().right)
-      case Failure(_) => Future.successful(PersistResult(FailedToAddToDatabase, "Failed to persist games").left)
-    }
-  }
 
   private def uploadFile(source: Path): Future[PersistResult \/ String] = {
     uploader.uploadFile(source, "hello").map { res =>
@@ -121,8 +120,7 @@ class BoutPersister @Inject() (uploader: FileUploader, boutDao: BoutDao, tournam
       replays    <- EitherT(parseZipFile(file))
       _          <- EitherT(validateReplays(replays, tournament))
       uploadFile <- EitherT(uploadFile(file))
-      boutId     <- EitherT(addToDatabase(tournament.id, replays.player1, replays.player2, uploadFile, metadata))
-      _          <- EitherT(addGamesToDatabase(boutId, replays))
+      _          <- EitherT(addToDatabase(tournament.id, replays.player1, replays.player2, uploadFile, metadata, replays))
 
     } yield PersistResult(Successful, "Bout persisted successfully")).run.map(_.merge)
   }

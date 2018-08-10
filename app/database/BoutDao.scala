@@ -12,7 +12,7 @@ import scala.concurrent.{ExecutionContext, Future}
 @Singleton
 class BoutDao @Inject() (dbConfigProvider: DatabaseConfigProvider)(implicit ec: ExecutionContext) {
 
-  private def convertToBout(x: BoutsRow): Bout = {
+  private[database] def convertToBout(x: BoutsRow): Bout = {
     Bout(x.id, x.tournament, x.player1, x.player2, x.url, Json.parse(x.metadata).as[BoutMetadata])
   }
 
@@ -41,7 +41,5 @@ class BoutDao @Inject() (dbConfigProvider: DatabaseConfigProvider)(implicit ec: 
     dbConfig.db.run {
       Tables.Bouts.returning(Tables.Bouts.map(_.id)).into((bout, id) => bout.copy(id = id)) += newBout
     }.map(_.id)
-
-
   }
 }

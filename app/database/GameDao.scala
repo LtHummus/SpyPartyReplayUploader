@@ -12,7 +12,7 @@ import scala.concurrent.{ExecutionContext, Future}
 @Singleton
 class GameDao @Inject() (dbConfigProvider: DatabaseConfigProvider)(implicit ec: ExecutionContext) {
 
-  private def convertToGame(x: GamesRow): Game = {
+  private[database] def convertToGame(x: GamesRow): Game = {
     Game(
       x.id,
       x.bout,
