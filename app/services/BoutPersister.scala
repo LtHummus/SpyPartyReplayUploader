@@ -2,13 +2,12 @@ package services
 
 import java.nio.file.Path
 
-import database.{BoutDao, BulkPersistUtil, GameDao, TournamentDao}
+import database.{BulkPersistUtil, TournamentDao}
 import javax.inject.{Inject, Singleton}
 import models._
 import scalaz._
 import Scalaz._
 import play.api.libs.json._
-import io.leonard.TraitFormat._
 import org.apache.commons.io.IOUtils
 import replays.Replay
 import replays._
@@ -16,7 +15,6 @@ import replays._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
-//TODO: make a real serializer instead of this garbage
 sealed trait PersistResultKind
 object PersistResultKind {
   private val writes: Writes[PersistResultKind] = (k: PersistResultKind) => {
@@ -81,7 +79,7 @@ class BoutPersister @Inject()(uploader: FileUploader, tournamentDao: TournamentD
                             player2: String,
                             url: String,
                             metadata: BoutMetadata,
-                            replays: List[Replay]): Future[PersistResult \/ Unit] = {
+                            replays: List[Replay]): Future[PersistResult \/ Int] = {
     val b = Bout(0, tournamentId, player1, player2, url, metadata)
     bulkInserter.persistAllBoutData(b, replays).transformWith {
       case Success(res) => Future.successful(res.right)
@@ -90,8 +88,9 @@ class BoutPersister @Inject()(uploader: FileUploader, tournamentDao: TournamentD
   }
 
 
-  private def uploadFile(source: Path): Future[PersistResult \/ String] = {
-    uploader.uploadFile(source, "hello").map { res =>
+  private def uploadFile(source: Path, player1: String, player2: String, tournament: Tournament): Future[PersistResult \/ String] = {
+    val fileKey = s"${tournament.name}/$player1 vs $player2 (${System.currentTimeMillis()}).zip" //i really don't like the timestamp...should change it later
+    uploader.uploadFile(source, fileKey).map { res =>
       res.leftMap(_ => PersistResult(UploadFailure, "Unable to upload replay to S3"))
     }
   }
@@ -136,10 +135,10 @@ class BoutPersister @Inject()(uploader: FileUploader, tournamentDao: TournamentD
       metadata   <- EitherT(validateData(tournament, fixedData))
       replays    <- EitherT(parseZipFile(file))
       _          <- EitherT(validateReplays(replays, tournament))
-      uploadFile <- EitherT(uploadFile(file))
-      _          <- EitherT(addToDatabase(tournament.id, replays.player1, replays.player2, uploadFile, metadata, replays))
+      uploadFile <- EitherT(uploadFile(file, replays.player1, replays.player2, tournament))
+      boutId     <- EitherT(addToDatabase(tournament.id, replays.player1, replays.player2, uploadFile, metadata, replays))
 
-    } yield PersistResult(Successful, "Bout persisted successfully")).run.map(_.merge)
+    } yield PersistResult(Successful, s"Bout $boutId persisted successfully")).run.map(_.merge)
   }
 
 }

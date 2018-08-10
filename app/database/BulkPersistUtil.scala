@@ -39,7 +39,7 @@ class BulkPersistUtil @Inject() (dbConfigProvider: DatabaseConfigProvider)(impli
           curr.numGuests)
       )
       _ <- Tables.Games ++= newGames
-    } yield ()).transactionally
+    } yield createdBout.id).transactionally
 
     dbConfig.db.run(insertion)
   }

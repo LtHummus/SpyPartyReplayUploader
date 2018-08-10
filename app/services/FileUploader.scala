@@ -15,8 +15,7 @@ class FileUploader @Inject() (s3: AmazonS3, config: SpyPartyReplayUploaderConfig
   def uploadFile(source: Path, key: String)(implicit ec: ExecutionContext): Future[Throwable \/ String] = Future {
     \/.fromTryCatchNonFatal{
       s3.putObject(config.ReplayBucketName, key, source.toFile)
-      "<SOME URL GOES HERE>" //TODO: talk to checker about where this bucket lives as well as policies on it
-
+      s"https://s3-us-west-2.amazonaws.com/${config.ReplayBucketName}/$key"
     }
   }
 
