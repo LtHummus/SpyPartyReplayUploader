@@ -31,7 +31,7 @@ object GameType {
       case 'k' => GameType(GameLoadoutTypeEnum.Known, x, 0).right
       case 'a' => GameType(GameLoadoutTypeEnum.Any, x, value.charAt(3) - 0x30).right
       case 'p' => GameType(GameLoadoutTypeEnum.Pick, x, value.charAt(3) - 0x30).right
-      case _ => "Unknown game type format".left
+      case _   => "Unknown game type format".left
     }
   }
 

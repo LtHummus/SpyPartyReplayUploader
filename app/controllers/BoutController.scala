@@ -4,7 +4,6 @@ import database.{BoutDao, GameDao}
 import javax.inject.{Inject, Singleton}
 import play.api.libs.json.Json
 import play.api.mvc.{AbstractController, ControllerComponents}
-import scalaz.{-\/, \/-}
 import services._
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -41,12 +40,12 @@ class BoutController @Inject()(boutPersister: BoutPersister, gameDao: GameDao, b
         boutPersister.persist(data, realFile.ref.path).map { res =>
           val serializedResult = Json.toJson(res)
           res.kind match {
-            case BadTournamentId => BadRequest(serializedResult)
-            case BadMetadata => PreconditionFailed(serializedResult)
-            case InvalidZipFile => BadRequest(serializedResult)
+            case BadTournamentId       => BadRequest(serializedResult)
+            case BadMetadata           => PreconditionFailed(serializedResult)
+            case InvalidZipFile        => BadRequest(serializedResult)
             case FailedToAddToDatabase => InternalServerError(serializedResult)
-            case UploadFailure => InternalServerError(serializedResult)
-            case Successful => Ok(serializedResult)
+            case UploadFailure         => InternalServerError(serializedResult)
+            case Successful            => Ok(serializedResult)
           }
         }
     }

@@ -9,7 +9,6 @@ object SelectionEntry {
 }
 
 
-//TODO: this can have a serialier/deserializer itself to make things even more typesafe....
 sealed abstract class TournamentFormKind(val name: String)
 case object String extends TournamentFormKind("String")
 case object Number extends TournamentFormKind("Number")

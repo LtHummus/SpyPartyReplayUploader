@@ -1,6 +1,6 @@
 package models
 
-import play.api.libs.json.{JsValue, Json}
+import play.api.libs.json.Json
 
 case  class BoutMetadataItem(key: String, value: String)
 object BoutMetadataItem {

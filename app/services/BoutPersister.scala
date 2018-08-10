@@ -83,7 +83,7 @@ class BoutPersister @Inject()(uploader: FileUploader, tournamentDao: TournamentD
     val b = Bout(0, tournamentId, player1, player2, url, metadata)
     bulkInserter.persistAllBoutData(b, replays).transformWith {
       case Success(res) => Future.successful(res.right)
-      case Failure(_) => Future.successful(PersistResult(FailedToAddToDatabase, "Failed to add bout to database").left)
+      case Failure(_)   => Future.successful(PersistResult(FailedToAddToDatabase, "Failed to add bout to database").left)
     }
   }
 
