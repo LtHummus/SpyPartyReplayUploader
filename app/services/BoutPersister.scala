@@ -7,7 +7,7 @@ import javax.inject.{Inject, Singleton}
 import models._
 import scalaz._
 import Scalaz._
-import play.api.libs.json.Json
+import play.api.libs.json._
 import io.leonard.TraitFormat._
 import org.apache.commons.io.IOUtils
 import replays.Replay
@@ -19,13 +19,30 @@ import scala.util.{Failure, Success}
 //TODO: make a real serializer instead of this garbage
 sealed trait PersistResultKind
 object PersistResultKind {
-  implicit val format = traitFormat[PersistResultKind] <<
-    caseObjectFormat(BadTournamentId) <<
-    caseObjectFormat(BadMetadata) <<
-    caseObjectFormat(InvalidZipFile) <<
-    caseObjectFormat(FailedToAddToDatabase) <<
-    caseObjectFormat(UploadFailure) <<
-    caseObjectFormat(Successful)
+  private val writes: Writes[PersistResultKind] = (k: PersistResultKind) => {
+    JsString(k.toString)
+  }
+  private val reads: Reads[PersistResultKind] = (json: JsValue) => {
+    fromString(json.as[String]) match {
+      case Some(kind) => JsSuccess(kind)
+      case _          => JsError("Unknown result kind")
+    }
+
+  }
+
+  private def fromString(x: String): Option[PersistResultKind] = {
+    x match {
+      case "BadTournamentId"       => Some(BadTournamentId)
+      case "BadMetadata"           => Some(BadMetadata)
+      case "InvalidZipFile"        => Some(InvalidZipFile)
+      case "FailedToAddToDatabase" => Some(FailedToAddToDatabase)
+      case "UploadFailure"         => Some(UploadFailure)
+      case "Successful"            => Some(Successful)
+      case _                       => None
+    }
+  }
+
+  implicit val format: Format[PersistResultKind] = Format(reads, writes)
 }
 case object BadTournamentId extends PersistResultKind
 case object BadMetadata extends PersistResultKind
