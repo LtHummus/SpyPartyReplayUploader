@@ -38,9 +38,6 @@ libraryDependencies ++= Seq(
   //S3
   "com.amazonaws" % "aws-java-sdk-s3" % "1.11.375",
 
-  //serializing sealed traits
-  "io.leonard" %% "play-json-traits" % "1.4.4",
-
   //long live apache commons
   "commons-io" % "commons-io" % "2.6"
 
